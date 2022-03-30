@@ -1,0 +1,117 @@
+---
+title: "DataVis Przybyłkiewicz"
+output: 
+  pdf_document
+  
+editor_options: 
+  chunk_output_type: console
+---
+```{r, global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE) 
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(tinytex)
+library(RColorBrewer)
+library(ggthemes)
+library(extrafont)
+font_import()
+
+cces <- drop_na(read_csv(url("https://www.dropbox.com/s/ahmt12y39unicd2/cces_sample_coursera.csv?raw=1")))
+
+cel <- drop_na(read_csv(url("https://www.dropbox.com/s/4ebgnkdhhxo5rac/cel_volden_wiseman%20_coursera.csv?raw=1")))
+```
+
+## Bar plot:
+
+I wanted to show if there is disproportion in number of congress members based on their gender
+
+```{r}
+cel$party <- recode(cel$dem, `1`="Democrats", `0`="Republicans")
+cel$gender <- recode(cel$female, `1`="Female", `0`="Male")
+ggplot(cel, aes(x = party, fill = gender)) +
+  geom_bar(position = "dodge2", width = 0.7) +
+  labs (title = "Share of female and male congress members", x = NULL, y = "count", 
+    fill = NULL) + scale_fill_manual(values = c("#E82CE4","#D9C1D0")) + 
+  theme_minimal() + theme (text = element_text(family = "Nunito SemiBold"), plot.title = 
+  element_text(face = "bold", size =12), panel.grid.major = element_line(colour = "black", 
+  size = 0.1, linetype = "dotted"), panel.grid.minor = element_blank(), aspect.ratio = 1, 
+  legend.text = element_text(size = 8), legend.key.size = unit(0.8, "lines"), 
+  legend.box.spacing = unit(0.1, "cm"), axis.text.y = element_text(size = 7)) +
+  scale_y_continuous(limits = c(0,6000))
+```
+
+## Scatter plot:
+
+I've decided to stick with marginalized groups and visualize how many bills proposed by members with different levels of seniority became laws, grouping them by gender and ethnicity
+
+```{r}
+cel$etni <- recode(cel$afam, `0`="Other", `1`="African American")
+cel$membership <- recode(cel$dem, `0`="Republican", `1`="Democrat")
+
+cel %>% filter(year>=2010) %>% ggplot(aes(x=seniority,y=all_law,
+                                          color=membership)) +
+  geom_point(position = "jitter", alpha=1/2) +
+  facet_wrap(gender~etni, labeller = label_wrap_gen(multi_line=FALSE)) +
+  labs(x="seniority", y="bills transformed into laws", 
+       color="Political Party") +
+  scale_color_manual(values = c("#2C3AE8", "#E82CE4")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.x = element_text(size=10, hjust = 1),
+    axis.title.y = element_text(size=10, hjust = 1),
+    legend.position = "top",
+    legend.title = element_blank(), 
+    legend.justification = c(-0.08,0), 
+    legend.margin = margin(0), 
+    aspect.ratio = 1) + 
+  ggtitle("relation of member seniority to bills passed ", 
+          subtitle = "by ethnicity and gender") 
+```
+
+## Line plot:
+
+In Exercise 1 I was checking if there is a disproportion and now I want to examine its division by ethnicity
+
+```{r}
+ex3dat <- cel %>% count(year, etni, gender)
+annotation <- data.frame(ex3dat, lab = "disproportion between genders") %>% 
+  filter(etni=="Other")
+
+ggplot(ex3dat, aes(x=year, y=n, color=gender)) +
+  geom_line() + 
+  geom_text(data=annotation, aes(x=1995,y=200,label=lab), 
+            color="black", check_overlap = TRUE) +
+  facet_wrap(~etni) +
+  labs(title="Gender division in congress by ethnicity", 
+       x="Year of observation", y="Number of Indyviduals") + 
+  scale_color_manual(values = c("#E82CE4","#2C3AE8")) +
+  theme_bw() +
+  theme(legend.title = element_blank())
+```
+
+## Density plot:
+
+Visualization of ideology distribution among congress members divided by ethnicity and gender after year 2000
+
+```{r}
+caption <-paste(
+  strwrap("Ideology distribution of congress members after year 2000", 40), 
+  collapse = "\n")
+
+cel %>% filter(year>=2000) %>% ggplot(aes(x=dwnom1, color=gender)) +
+geom_density() + 
+  annotate(geom = "text", x = 0, y = 3, label = caption, hjust = 0, size = 3) +
+  facet_grid(etni~ .) +
+  labs(x="ideology (higher = more conservative)", y="density") +
+  scale_color_manual(values = c("#E82CE4","#2C3AE8")) +
+  theme_minimal() +
+  theme(panel.spacing = unit(1, "lines"),
+    plot.title = element_text(face = "bold"),
+    axis.title.x = element_text(size=10),
+    axis.title.y = element_text(size=10),
+    legend.position = "right",
+    legend.title = element_blank(), legend.box = "dot") 
+```
